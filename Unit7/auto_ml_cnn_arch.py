@@ -30,71 +30,6 @@ def crossover_method_2(par):
             child.append(par[1][i])
     return np.asarray(child)
 
-
-def mutation_1_n_z(x1, xs, beta):
-    return x1 + beta * (xs[0] - xs[1])
-
-
-def mutation_curr_to_best_n(cur, best, xs, beta):
-    difference_vector = xs[0] - xs[1]
-    for i in range(2, len(xs), 2):
-        difference_vector += (xs[i] - xs[i + 1])
-    return cur + beta * (best - cur) + beta * difference_vector
-
-
-def mutation_rand_to_best_n(best, rand, xs, gamma, beta):
-    difference_vector = xs[0] - xs[1]
-    for i in range(2, len(xs), 2):
-        difference_vector += (xs[i] - xs[i + 1])
-    return gamma * best + (1 - gamma) * rand + beta * difference_vector  # cur+beta*(best-cur)+beta*difference_vector
-
-
-def self_adaptive_beta(b_min, b_max, f_min, f_max):
-    if np.abs(f_max / f_min) < 1:
-        return np.maximum(b_min, b_max - np.abs(f_max / f_min))
-    else:
-        return np.maximum(b_min, b_max - np.abs(f_min / f_max))
-
-
-def logistic_decay(max_value, rate, index):
-    p = (2 * max_value * max_value * np.exp(rate * index)) / (
-            max_value + max_value * np.exp(rate * index))
-    return p
-
-
-def bisection(max_iter, max_value, iter_index, min_value):
-    a = -0.00001
-    b = -0.5
-    tol = 1e-7
-    if (logistic_decay(max_value, a, iter_index) - min_value) * (
-            logistic_decay(max_value, b, iter_index) - min_value) > 0:
-        print("Error: Function requires a change of signs over given interval")
-        return -1
-
-    iter = 0
-    while True:
-        m = (a + b) / 2
-        fa = logistic_decay(max_value, a, iter_index) - min_value
-        fm = logistic_decay(max_value, m, iter_index) - min_value
-        if fa * fm < 0:
-            b = m
-        elif fa * fm > 0:
-            a = m
-        else:  # fa*fm == 0 ; where fm == 0
-            break
-
-        iter += 1
-        if (abs(b - a) < tol):
-            break
-        elif iter == max_iter:
-            break
-    return m
-
-
-def find_rate(iter_index, max_value, min_value):
-    return bisection(iter_index=iter_index, max_value=max_value, min_value=min_value, max_iter=50)
-
-
 class StateSave:
 
     def __init__(self, gen_cnn, gen_deep, best_fit, mean_fit, epoch, other=None):
@@ -111,15 +46,6 @@ def differential_evolution(init_gen_cnn, init_gen_deep, fitness_function, bounds
                            rep_method=1, cross_method=1, state_save=2, state_reload=None):
     best_fit = []
     mean_fit = []
-    beta_max = 1 / n_diff
-    beta_min = 0.2 / n_diff
-    if beta_method == 'linear':
-        slope = (beta_max - beta_min) / (-max_iter)
-        betas = np.arange(0, max_iter, 1)
-        betas = betas * slope + beta_max
-
-    index = int(0.85 * max_iter)
-    rate = find_rate(index, beta_max, beta_min)
     n, m, c, = init_gen_cnn.shape
     start = 0
     if state_reload:
@@ -154,19 +80,7 @@ def differential_evolution(init_gen_cnn, init_gen_deep, fitness_function, bounds
         for i in range(0, n):
             par_cnn = gen_cnn[i]
             par_deep = gen_deep[i]
-            if beta_method == 'random':
-                beta = np.random.uniform(beta_min, beta_max, 1)[0]  # np.random.normal(0.5, 0.15, 1)[0]
-            elif beta_method == 'linear':
-                beta = betas[k]
-            elif beta_method == 'static':
-                beta = 0.5
-            elif beta_method == 'self-adaptive':
-                beta = self_adaptive_beta(beta_min, beta_max, np.min(fit), np.max(fit))
-            elif beta_method == 'dynamic':
-                if k < index:
-                    beta = logistic_decay(beta_max, rate, k)
-                else:
-                    beta = beta_min
+            beta = 0.5
 
             ind = np.random.choice(range(0, n), n_diff * 2+1, replace=False)
             if rep_method == 1:  # /rand/n/z
@@ -174,16 +88,7 @@ def differential_evolution(init_gen_cnn, init_gen_deep, fitness_function, bounds
                 unit_cnn = mutation_1_n_z(target_cnn, gen_cnn[ind[0:2]], beta)
                 target_deep = gen_deep[ind[2]]
                 unit_deep = mutation_1_n_z(target_deep, gen_deep[ind[0:2]], beta)
-            elif rep_method == 2:  # /rand/n/z
-                target = gen[np.random.choice(range(0, n), 2)[0]]
-                unit = mutation_1_n_z(target, gen[ind], beta)
-            elif rep_method == 3:  # /rand-to-best/n/z
-                gamma = 0.75
-                target = gen[np.argmin(fit)]
-                unit = mutation_rand_to_best_n(target, gen[np.random.choice(range(0, n), 2)[0]], gen[ind], gamma, beta)
-            elif rep_method == 4:  # /curr-to-best/n/z
-                target = gen[np.argmin(fit)]
-                unit = mutation_curr_to_best_n(par, target, gen[ind], beta)
+  
 
             for l in range(0, len(unit_cnn)):
                 for j in range(0, len(unit_cnn[l])):
