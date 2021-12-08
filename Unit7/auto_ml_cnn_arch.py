@@ -30,6 +30,9 @@ def crossover_method_2(par):
             child.append(par[1][i])
     return np.asarray(child)
 
+def mutation_1_n_z(x1, xs, beta):
+    return x1 + beta * (xs[0] - xs[1])
+
 class StateSave:
 
     def __init__(self, gen_cnn, gen_deep, best_fit, mean_fit, epoch, other=None):
