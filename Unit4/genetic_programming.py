@@ -55,10 +55,6 @@ for vision in range(min_window, max_window + 1):
     x_val = input[train_ind:val_ind]
     x_test = input[val_ind:size]
 
-    init_gen = []
-    for i in range(0, initial_population_size):
-        init_gen.append(EvolvableNetwork(layer_nodes=[5, 5, 5], num_input=vision, num_output=1, initialize=True))
-
     function_set = ['add', 'sub', 'mul', 'div', 'sin']
     temp_val = []
     temp_models = []
